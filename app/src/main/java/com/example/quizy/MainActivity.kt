@@ -55,6 +55,7 @@ import com.example.quizy.presentation.common.Route
 import com.example.quizy.presentation.common.navigation.BottomBarItem
 import com.example.quizy.presentation.common.navigation.Routes
 import com.example.quizy.presentation.common.navigation.bottomBarItems
+import com.example.quizy.presentation.dialogs.EndGameDialog
 import com.example.quizy.presentation.dialogs.ErrorDialog
 import com.example.quizy.presentation.drawing.DrawingScreen
 import com.example.quizy.presentation.games.GamesScreen
@@ -139,7 +140,12 @@ fun CreateNavigation(navController: NavHostController, startRoute: Route,modifie
 //            }
         )
         }
-        composable<Routes.Pairs> { PairsScreen {navController.navigateUp() }  }
+        composable<Routes.Pairs> { PairsScreen(
+            onBackPressed = {navController.navigateUp() },
+            onEndGame = { score->
+                navController.navigate(Routes.EndGameDialog(score))
+            }
+        )  }
         composable<Routes.Drawing> { DrawingScreen {navController.navigateUp() } }
         composable<Routes.Quiz> { QuizScreen {navController.navigateUp()} }
         composable<Routes.ChoosePlayer>{ ChoosePlayerScreen{navController.navigate(Routes.LeaderboardScreen)}}
@@ -149,6 +155,15 @@ fun CreateNavigation(navController: NavHostController, startRoute: Route,modifie
             ErrorDialog(text = errorMessage) {
                 navController.navigateUp()
             }
+        }
+
+        dialog<Routes.EndGameDialog> { navBackStackEntry ->
+            val score = navBackStackEntry.toRoute<Routes.EndGameDialog>().score
+            EndGameDialog(score = score) {
+                navController.navigateUp()
+                navController.navigateUp()
+            }
+
         }
     }
 
@@ -195,34 +210,4 @@ fun CreateBottomBar(navController: NavController){
 
 
 
-
-
-
-@Composable
-private fun CreateBottomBar(bottomNavController: NavController, navController: NavController) {
-    val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-
-    BottomAppBar(modifier = Modifier.height(58.dp)){
-        bottomBarItems.forEach { item->
-            val isSelected = currentDestination?.hierarchy?.any {
-                it.hasRoute(item.destination::class)
-            } == true
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = { navController.navigate(item.destination) },
-                icon = {
-                    Image(
-                        imageVector = ImageVector.vectorResource(id = item.icon),
-                        contentDescription = null,
-                        colorFilter = ColorFilter.tint(Color(0xFFCCCCCC))
-                    )
-                }
-            )
-        }
-    }
-
-
-
-}
 
