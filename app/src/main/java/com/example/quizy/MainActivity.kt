@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -42,8 +43,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.findNavController
 import androidx.navigation.toRoute
+import com.example.quizy.data.common.SharedPreferensesProvider
+import com.example.quizy.presentation.choosePlayer.ChoosePlayerScreen
 import com.example.quizy.presentation.clicker.ClickerScreen
+import com.example.quizy.presentation.common.ErrorHandler
+import com.example.quizy.presentation.common.ErrorHandlerProvider
+import com.example.quizy.presentation.common.ErrorType
+import com.example.quizy.presentation.common.Route
 import com.example.quizy.presentation.common.navigation.BottomBarItem
 import com.example.quizy.presentation.common.navigation.Routes
 import com.example.quizy.presentation.common.navigation.bottomBarItems
@@ -60,28 +68,48 @@ import dagger.hilt.android.AndroidEntryPoint
 
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), ErrorHandler {
+    private lateinit var navController: NavHostController
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ErrorHandlerProvider.setErrorHandler(this)
+        initSharedPrefs()
+        val id = getId()
+        val startRoute = if(id==-1)Routes.ChoosePlayer else Routes.LeaderboardScreen
+
         setContent {
             QuizyTheme {
-                val navController = rememberNavController()
+                navController = rememberNavController()
                 Scaffold(
                     bottomBar = { CreateBottomBar(navController)}
                 ){innerPadding->
                     println(innerPadding)
-                    CreateNavigation(navController)
-                }
 
+                    CreateNavigation(navController, startRoute, Modifier.padding(innerPadding))
+                }
 
             }
         }
     }
+
+    override fun showError(error: ErrorType) {
+        Log.d("error", error.message)
+        navController.navigate(Routes.ErrorDialog(error.message))
+    }
+
+    private fun initSharedPrefs(){
+        SharedPreferensesProvider.init(this)
+    }
+    private fun getId()=
+        SharedPreferensesProvider.getIdFromSharedPrefs()
+
+
 }
 
 @Composable
-fun CreateNavigation(navController: NavHostController){
-    NavHost(navController = navController, startDestination = Routes.LeaderboardScreen){
+fun CreateNavigation(navController: NavHostController, startRoute: Route,modifier: Modifier = Modifier){
+
+    NavHost(navController = navController, startDestination = startRoute, modifier = modifier){
         composable<Routes.LeaderboardScreen> {
             LeaderboardScreen(
                 onBackPressed = {
@@ -89,16 +117,32 @@ fun CreateNavigation(navController: NavHostController){
                 },
                 onError = {message->
                     navController.navigate(Routes.ErrorDialog(message))
-
                 })
         }
         composable<Routes.Search> { SearchScreen()  }
-        composable<Routes.Games> { GamesScreen() }
+        composable<Routes.Games> { GamesScreen{ gameName->
+            with(navController){
+                when(gameName){
+                    "Clicker"->navigate(Routes.Clicker)
+                    "Quiz"-> navigate(Routes.Quiz)
+                    "Drawing"-> navigate(Routes.Drawing)
+                    "Pairs"-> navigate(Routes.Pairs)
+                }
+            }
+
+        } }
         composable<Routes.Profile> { ProfileScreen() }
-        composable<Routes.Clicker> { ClickerScreen {navController.navigateUp()}}
+        composable<Routes.Clicker> { ClickerScreen(
+            onBackPressed = {navController.navigateUp()},
+//            onError = {message->
+//                navController.navigate(Routes.ErrorDialog(message))
+//            }
+        )
+        }
         composable<Routes.Pairs> { PairsScreen {navController.navigateUp() }  }
         composable<Routes.Drawing> { DrawingScreen {navController.navigateUp() } }
         composable<Routes.Quiz> { QuizScreen {navController.navigateUp()} }
+        composable<Routes.ChoosePlayer>{ ChoosePlayerScreen{navController.navigate(Routes.LeaderboardScreen)}}
 
         dialog<Routes.ErrorDialog> { navBackStackEntry ->
             val errorMessage = navBackStackEntry.toRoute<Routes.ErrorDialog>().errorMessage
