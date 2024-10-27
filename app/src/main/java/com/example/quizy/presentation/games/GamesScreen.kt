@@ -34,6 +34,9 @@ fun GamesScreen (
     val viewModel: GamesViewModel = hiltViewModel()
     val state by viewModel.screenState.collectAsState()
 
+    LaunchedEffect(key1 = Unit) {
+        viewModel.init()
+    }
 
     if(state.isLoading) LoadingScreen()
     else CreateGameColumn(games = state.games) {name->
@@ -70,7 +73,9 @@ fun CreateItemGame(game: GameItemUiState, onGameClicked: (String) -> Unit){
             .padding(12.dp)
     ) {
         Image(
-            modifier = Modifier.width(32.dp).height(32.dp),
+            modifier = Modifier
+                .width(32.dp)
+                .height(32.dp),
             bitmap = game.image.asImageBitmap(),
             contentDescription =null,
         )

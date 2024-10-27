@@ -8,4 +8,5 @@ import kotlinx.coroutines.flow.Flow
 interface PlayerRepository {
     suspend fun getPlayers(): Flow<List<Player>>
     suspend fun updateTotalScore( score: Int)
+    suspend fun getCurrentPlayer(): Player
 }

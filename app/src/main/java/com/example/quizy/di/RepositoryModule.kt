@@ -13,6 +13,7 @@ import com.example.quizy.domain.repositories.PhotoRepository
 import com.example.quizy.domain.repositories.PlayerRepository
 import com.example.quizy.domain.useCases.ClickerUseCases
 import com.example.quizy.domain.useCases.GameUseCases
+import com.example.quizy.presentation.profile.models.ProfileUseCases
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -80,6 +81,13 @@ object RepositoryModule {
         gameRepository: GameRepository,
         photoRepository: PhotoRepository
     ): GameUseCases = GameUseCases(gameRepository, photoRepository)
+
+    @Provides
+    @Singleton
+    fun provideProfileUseCases(
+        playerRepository: PlayerRepository,
+        photoRepository: PhotoRepository
+    ):ProfileUseCases = ProfileUseCases(playerRepository, photoRepository)
 
 
 
