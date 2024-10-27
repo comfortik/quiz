@@ -1,5 +1,6 @@
 package com.example.quizy.data.repositoryImpl
 
+import android.util.Log
 import com.example.quizy.data.common.SharedPreferensesProvider
 import com.example.quizy.data.common.SupabaseClientProvider
 import com.example.quizy.domain.models.Player
@@ -31,6 +32,14 @@ class PlayerRepositoryImpl @Inject constructor(
             filter { eq("id", id) }
         }
     }
+
+    override suspend fun getCurrentPlayer(): Player {
+        val id = sharedPrefs.getIdFromSharedPrefs()
+        val player = getPlayerById(id)
+        return player
+    }
+
+
     private suspend fun getPlayerById(id: Int) =
         supabase.client.from(tableName).select { filter { eq("id", id) } }.decodeSingle<Player>()
 }
