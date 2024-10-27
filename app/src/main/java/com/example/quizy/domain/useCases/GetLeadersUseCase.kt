@@ -1,4 +1,4 @@
-package com.example.quizy.domain
+package com.example.quizy.domain.useCases
 
 import com.example.quizy.domain.repositories.PhotoRepository
 import com.example.quizy.domain.repositories.PlayerRepository
@@ -27,7 +27,7 @@ class GetLeadersUseCase @Inject constructor(
         }
     }
     private suspend fun loadImage(name: String)=
-        photoRepository.getPhotoFromSupabaseStorage(name)
+        photoRepository.getPhotoFromSupabaseStorage(name, "avatars")
 
 
 

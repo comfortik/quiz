@@ -25,5 +25,7 @@ sealed class Routes: Route {
     data object Quiz : Route
     @Serializable
     data object Drawing : Route
+    @Serializable
+    data object ChoosePlayer: Route
 
 }
