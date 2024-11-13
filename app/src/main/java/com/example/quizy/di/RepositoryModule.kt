@@ -2,18 +2,25 @@ package com.example.quizy.di
 
 import com.example.quizy.data.common.SharedPreferensesProvider
 import com.example.quizy.data.common.SupabaseClientProvider
+import com.example.quizy.data.repositoryImpl.AnswerRepositoryImpl
 import com.example.quizy.data.repositoryImpl.ClickerPlayerRepositoryImpl
 import com.example.quizy.data.repositoryImpl.GameRepositoryImpl
 import com.example.quizy.data.repositoryImpl.PhotoRepositoryImpl
 import com.example.quizy.data.repositoryImpl.PlayerRepositoryImpl
+import com.example.quizy.data.repositoryImpl.QuestionRepositoryImpl
+import com.example.quizy.data.repositoryImpl.RoomRepositoryImpl
+import com.example.quizy.domain.repositories.AnswerRepository
 import com.example.quizy.domain.repositories.ClickerPlayerRepository
 import com.example.quizy.domain.repositories.GameRepository
 import com.example.quizy.domain.useCases.GetLeadersUseCase
 import com.example.quizy.domain.repositories.PhotoRepository
 import com.example.quizy.domain.repositories.PlayerRepository
+import com.example.quizy.domain.repositories.QuestionRepository
+import com.example.quizy.domain.repositories.RoomRepository
 import com.example.quizy.domain.useCases.ClickerUseCases
 import com.example.quizy.domain.useCases.GameUseCases
 import com.example.quizy.domain.useCases.PairsUseCases
+import com.example.quizy.domain.useCases.QuizUseCases
 import com.example.quizy.presentation.profile.models.ProfileUseCases
 import dagger.Module
 import dagger.Provides
@@ -96,6 +103,34 @@ object RepositoryModule {
         photoRepository: PhotoRepository,
         playerRepository: PlayerRepository
     ):PairsUseCases = PairsUseCases(photoRepository, playerRepository)
+
+    @Provides
+    @Singleton
+    fun provideQuizUseCases(
+        roomRepository: RoomRepository,
+        playerRepository: PlayerRepository,
+        questionRepository: QuestionRepository,
+        answerRepository: AnswerRepository
+    ): QuizUseCases = QuizUseCases(roomRepository, playerRepository, questionRepository, answerRepository)
+
+    @Provides
+    @Singleton
+    fun provideQuestionRepository(
+        supabaseClient: SupabaseClientProvider
+    ):QuestionRepository = QuestionRepositoryImpl(supabaseClient)
+
+    @Provides
+    @Singleton
+    fun provideAnswersRepository(
+        supabaseClient: SupabaseClientProvider
+    ):AnswerRepository = AnswerRepositoryImpl(supabaseClient)
+
+    @Provides
+    @Singleton
+    fun provideRoomRepository(
+        supabaseClient: SupabaseClientProvider,
+        sharedPrefs: SharedPreferensesProvider
+    ): RoomRepository = RoomRepositoryImpl(supabaseClient, sharedPrefs)
 
 
 

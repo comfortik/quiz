@@ -6,28 +6,25 @@ import kotlinx.serialization.Serializable
 
 
 @Serializable
-sealed class Routes: Route {
+sealed interface Routes:Route {
     @Serializable
-    data object LeaderboardScreen: Route
+    data object LeaderboardScreen: Routes
     @Serializable
-    data class ErrorDialog( val errorMessage: String) : Route
+    data object Clicker : Routes
     @Serializable
-    data object Clicker : Route
+    data object Games : Routes
     @Serializable
-    data object Games : Route
+    data object Pairs : Routes
     @Serializable
-    data object Pairs : Route
+    data object Profile : Routes
     @Serializable
-    data object Profile : Route
+    data object Search : Routes
     @Serializable
-    data object Search : Route
+    data object Quiz : Routes
     @Serializable
-    data object Quiz : Route
+    data object Drawing : Routes
     @Serializable
-    data object Drawing : Route
-    @Serializable
-    data object ChoosePlayer: Route
-    @Serializable
-    data class EndGameDialog(val score: Int): Route
+    data object ChoosePlayer: Routes
+
 
 }

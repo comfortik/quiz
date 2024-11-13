@@ -92,6 +92,9 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.slf4j.simple)
     implementation(libs.kotlinx.serialization.json)
+
+
+    implementation(libs.glide)
 }
 
 kapt {
