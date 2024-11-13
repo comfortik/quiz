@@ -3,14 +3,12 @@ package com.example.quizy.presentation.quiz
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.example.quizy.domain.useCases.QuizUseCases
-import com.example.quizy.presentation.common.BaseAction
 import com.example.quizy.presentation.common.BaseViewModel
 import com.example.quizy.presentation.quiz.models.QuestionWithAnswer
 import com.example.quizy.presentation.quiz.models.QuizAction
 import com.example.quizy.presentation.quiz.models.QuizIntent
 import com.example.quizy.presentation.quiz.models.QuizUIState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,7 +17,7 @@ import javax.inject.Inject
 class QuizViewModel  @Inject constructor(
     val quizUseCases: QuizUseCases
 ): BaseViewModel<QuizUIState, QuizAction>() {
-
+    private var isDialogShowed = false
     override fun createInitState(): QuizUIState =
         QuizUIState(
             count = 0,
@@ -31,53 +29,109 @@ class QuizViewModel  @Inject constructor(
             isReadyButtonVisible = false,
         )
     lateinit var quiz: List<QuestionWithAnswer>
-    private var countOfCurrentQuestion=0
+    private var isAdmin = false
     init {
         getQuestionsWithAnswers()
     }
-
 
     fun handleIntent(intent: QuizIntent){
         when(intent){
             is QuizIntent.CreateNewRoom->{
                 createRoom()
+                isAdmin=true
             }
             is QuizIntent.JoinRoom->{
                 joinRoom(intent.roomId)
+
+            }
+
+            is QuizIntent.UpdateReady->
+                updateReady(intent.isRight)
+
+            is QuizIntent.LeaveGame->{
+                if(isAdmin){
+                    viewModelScope.launch {
+                        quizUseCases.endGame(emptyList())
+                    }
+                }
             }
 
         }
 
     }
-    suspend fun subscibePlayers(){
-            quizUseCases.subPlayers().collect{ combine->
-                val players = combine.players
-                val readyPlayers = combine.readyPlayers
-                _currentState.value = screenState.value.copy(
-                    players = "${readyPlayers.size}/${players.size}"
-                )
-                if(players.size==readyPlayers.size){
-                    val q = quiz[countOfCurrentQuestion-1]
-                    val currentQuestion =q.question
-                    val currentAnswers = q.answers
-                    quizUseCases.updateReadinessDown()
+
+
+    private fun subscribeRoom(){
+        viewModelScope.launch {
+            quizUseCases.subRoom().collect{
+                if (it.isEnded!!){
+                    if(!isDialogShowed){
+                        isDialogShowed = true
+                        _action.emit(QuizAction.ShowEndAlert(it.leader?.name?:"Админ ливнул", it.leader?.score?:0))
+
+                    }
+                }
+                if(it.isStarted){
                     _currentState.value = screenState.value.copy(
-                        question =  currentQuestion.question_text,
-                        answer = currentAnswers.map { Pair(it.answer_text, it.is_correct) }
+                        isReadyButtonVisible = false
                     )
                 }
+
+                val players = it.playerIds
+                val readyPlayers = it.readyPlayerIds
+                _currentState.value = screenState.value.copy(
+                    players = "${readyPlayers?.size}/${players.size}"
+                )
+
+
+                if(
+                    it.readyPlayerIds?.toSet()== it.playerIds.toSet()
+                    ){
+
+                    if(isAdmin) {
+                        if(!it.isStarted){
+                            quizUseCases.startGame()
+                        }
+                        quizUseCases.updateReadinessDown()
+                        if(it.currentQuestion<quiz.size-1){
+                            quizUseCases.nextQuestion(it.currentQuestion + 1)
+                        }else{
+                            quizUseCases.endGame(it.playerIds)
+                        }
+
+                    }
+                }
+
+                if(it.currentQuestion>0){
+                    updateQuestions(it.currentQuestion)
+                }
             }
+
+
+        }
     }
-    fun updateReady(isRight: Boolean){
-        countOfCurrentQuestion++
+
+    private fun updateQuestions(num: Int){
+        val q = quiz[num]
+        val currentQuestion =q.question
+        val currentAnswers = q.answers
+        _currentState.value = screenState.value.copy(
+            question =  currentQuestion.question_text,
+            answer = currentAnswers.map { Pair(it.answer_text, it.is_correct) }
+        )
+    }
+
+    private fun updateReady(isRight: Boolean){
         viewModelScope.launch {
-            quizUseCases.updateReadiness()
+            Log.d("view,odel", "$isRight")
             if(isRight){
                 quizUseCases.updateScore(50)
             }
+            quizUseCases.updateReadiness()
+
         }
     }
-    fun createRoom(){
+    private fun createRoom(){
         _currentState.value = screenState.value.copy(
             isShowAlert = false,
             isLoading = true
@@ -89,14 +143,15 @@ class QuizViewModel  @Inject constructor(
                 isLoading = false,
                 isReadyButtonVisible = true
             )
-            subscibePlayers()
+            subscribeRoom()
         }
     }
-    fun joinRoom(roomId: Int){
+    private fun joinRoom(roomId: Int){
+        Log.d("viewmodel", "id $roomId")
         viewModelScope.launch {
             try{
-                val roomId =  quizUseCases.joinRoom(roomId)
-                if(roomId==-1){
+                val id =  quizUseCases.joinRoom(roomId)
+                if(id==-1){
                     throw IllegalStateException()
                 }
                 else{
@@ -104,24 +159,24 @@ class QuizViewModel  @Inject constructor(
                         isShowAlert = false,
                         isLoading = true
                     )
+                    _currentState.value = screenState.value.copy(
+                        roomId = id,
+                        isLoading = false,
+                        isReadyButtonVisible = true
+                    )
+                    subscribeRoom()
                 }
-                _currentState.value = screenState.value.copy(
-                    roomId = roomId,
-                    isLoading = false,
-                    isReadyButtonVisible = true
-                )
-                subscibePlayers()
+
             }catch (e: Exception){
-                Log.d("qi", "error")
                 _action.tryEmit(QuizAction.ShowErrorToast)
             }
 
         }
     }
 
-    fun getQuestionsWithAnswers() {
+    private fun getQuestionsWithAnswers() {
         viewModelScope.launch {
-            quiz =  quizUseCases.getQuestionsWithAnswers()
+            quiz =  quizUseCases.getQuestionsWithAnswers().take(3)
         }
     }
 }

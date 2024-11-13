@@ -18,12 +18,15 @@ class PlayerRepositoryImpl @Inject constructor(
 ): PlayerRepository {
     val tableName = "players"
 
+    private var savedPlayers: List<Player>?  = null
+
     @OptIn(SupabaseExperimental::class)
     override suspend fun getPlayers(): Flow<List<Player>> =
         supabase.client.from(tableName).selectAsFlow(Player::id)
 
     override suspend fun updateTotalScore(score: Int) {
         val id = sharedPrefs.getIdFromSharedPrefs()
+        Log.d("playerRepoImpl", id.toString())
         val player = getPlayerById(id)
         val newScore = player.total_score+score
         supabase.client.from(tableName).update({
@@ -37,6 +40,28 @@ class PlayerRepositoryImpl @Inject constructor(
         val id = sharedPrefs.getIdFromSharedPrefs()
         val player = getPlayerById(id)
         return player
+    }
+
+    override suspend fun saveStartScore() {
+        savedPlayers = supabase.client.from(tableName).select().decodeList<Player>()
+    }
+
+
+    override suspend fun endGame(players: List<Int>): Player {
+        val playerList = supabase.client.from(tableName)
+            .select()
+            .decodeList<Player>()
+            .filter {
+                players.contains(it.id)
+            }.map {player->
+                val savePlayer = savedPlayers?.find { it.id == player.id }
+                val gameScore = player.total_score - savePlayer!!.total_score
+                player.copy(
+                    total_score = gameScore
+                )
+            }
+        savedPlayers =null
+        return playerList.maxBy { it.total_score }
     }
 
 

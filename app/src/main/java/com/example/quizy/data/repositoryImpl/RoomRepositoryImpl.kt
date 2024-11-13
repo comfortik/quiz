@@ -3,7 +3,9 @@ package com.example.quizy.data.repositoryImpl
 import android.util.Log
 import com.example.quizy.data.common.SharedPreferensesProvider
 import com.example.quizy.data.common.SupabaseClientProvider
+import com.example.quizy.domain.models.Player
 import com.example.quizy.domain.repositories.RoomRepository
+import com.example.quizy.presentation.common.LeaderDTO
 import com.example.quizy.presentation.quiz.models.QuizRoom
 import io.github.jan.supabase.annotations.SupabaseExperimental
 import io.github.jan.supabase.postgrest.from
@@ -13,6 +15,7 @@ import io.github.jan.supabase.realtime.selectAsFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
 
 class RoomRepositoryImpl(
     private val supabase: SupabaseClientProvider,
@@ -29,7 +32,15 @@ class RoomRepositoryImpl(
 
     override suspend fun createRoom(): Int {
             Log.d("repo", "stratcreate")
-            val room = supabase.client.from(tableName).insert(QuizRoom(playerIds = listOf(currentId), readyPlayerIds = listOf())){
+            val room = supabase.client
+                .from(tableName)
+                .insert(
+                    QuizRoom(
+                        playerIds = listOf(currentId),
+                        readyPlayerIds = listOf(),
+                        isEnded = false
+                    )
+                ){
                     select()
             }.decodeSingle<QuizRoom>()
             if (roomId==-1){
@@ -42,16 +53,19 @@ class RoomRepositoryImpl(
 
     override suspend fun joinRoom(roomId: Int): Int {
         val room = supabase.client.from(tableName).select { filter { eq("id", roomId) } }.decodeSingle<QuizRoom>()
-        val newPlayers = room.playerIds.toMutableList()
-        newPlayers.add(currentId)
+
         if(!room.isStarted){
+            val newPlayers = room.playerIds.toMutableList()
+            newPlayers.add(currentId)
+            if(this.roomId==-1){
+                this.roomId= roomId
+            }
+            updatePlayers(newPlayers)
+            return roomId
+        }else{
             return -1
         }
-        if(this.roomId==-1){
-            this.roomId= roomId
-        }
-        updatePlayers(newPlayers)
-        return roomId
+
     }
 
 
@@ -65,10 +79,13 @@ class RoomRepositoryImpl(
     }
 
     override suspend fun updateReadyPlayers() {
+        Log.d("ready repo", "asdas")
         val oldPlayers = getQuizRoom().readyPlayerIds
+        Log.d("ready repo", "$oldPlayers")
         val newPlayers = oldPlayers?.toMutableList()
         newPlayers?.add(currentId)
-        supabase.client.from(tableName).update({set("ready_players", newPlayers)}){
+        Log.d("ready repo", "$newPlayers")
+        supabase.client.from(tableName).update({set("ready_players", newPlayers?.toSet())}){
             filter { eq("id", roomId) }
         }
     }
@@ -77,15 +94,13 @@ class RoomRepositoryImpl(
         val oldPlayers = getQuizRoom().readyPlayerIds
         val newPlayers = oldPlayers?.toMutableList()
         newPlayers?.remove(currentId)
-        supabase.client.from(tableName).update({set("ready_players", newPlayers)}){
+        Log.d("repo", "${newPlayers?.joinToString()}")
+        supabase.client.from(tableName).update({set("ready_players", listOf<Int>())}){
             filter { eq("id", roomId) }
         }
     }
 
-    override suspend fun updatePlayers() {
-        val oldPlayers = getQuizRoom().playerIds
 
-    }
 
     private suspend fun getQuizRoom(): QuizRoom{
         val room = supabase.client.from(tableName).select(){
@@ -94,58 +109,50 @@ class RoomRepositoryImpl(
         return room
     }
 
+
     @OptIn(SupabaseExperimental::class)
-    override suspend fun getPlayers(): Flow<Set<Int>> {
-        Log.d("repo", "start getPlayers")
+    override suspend fun subRoom(): Flow<QuizRoom> {
 
         val filter = FilterOperation(
             column = "id",
             operator = FilterOperator.EQ,
             value = roomId
         )
-        val list = supabase.client.from(tableName)
+        val flow = supabase.client
+            .from(tableName)
+            .selectAsFlow(QuizRoom::id, filter = filter)
 
-        Log.d("repo", list.select().decodeList<QuizRoom>().toString())
+        val room = flow.map{it.first()}
+        return room
+    }
 
-        val a = list.selectAsFlow(QuizRoom::id, filter = filter)
-
-        return a.map { rooms ->
-            if (rooms.isNotEmpty()) {
-                Log.d("repo", "Found room: ${rooms[0].id}")
-                rooms[0].playerIds
-            } else {
-                Log.d("repo", "No rooms found for roomId: $roomId")
-                emptyList()
-            }.toSet()
+    override suspend fun nextQuestion(num: Int) {
+        Log.d("repo", "next question $num")
+        supabase.client.from(tableName).update({
+            set("current_question", num)
+        }){
+            filter { eq("id", roomId) }
         }
     }
 
-    @OptIn(SupabaseExperimental::class)
-    override suspend fun getReadyPlayers(): Flow<Set<Int>> {
-        val filter = FilterOperation(
-            column = "id",
-            operator = FilterOperator.EQ,
-            value = roomId
-        )
-        val list = supabase.client.from(tableName)
+    override suspend fun startGame() {
+        supabase.client.from(tableName).update({set("is_started", true)}){filter { eq("id", roomId) }}
+    }
 
-        Log.d("repo", list.select().decodeList<QuizRoom>().toString())
-
-        val a = list.selectAsFlow(QuizRoom::id, filter = filter)
-
-        return a.map { rooms ->
-            if (rooms.isNotEmpty()) {
-                Log.d("repo", "Found room: ${rooms[0].id}")
-                rooms[0].readyPlayerIds
-            } else {
-                Log.d("repo", "No rooms found for roomId: $roomId")
-                emptyList()
-            }!!.toSet()
-
+    override suspend fun setLeader(player: Player) {
+        val leaderDTO = LeaderDTO(player.name, player.total_score)
+        supabase.client.from(tableName).update({set("leader", leaderDTO)}){
+            filter {    eq("id", roomId) }
         }
     }
 
-    override suspend fun getCurrentQuestion(): StateFlow<Int> {
-        TODO("Not yet implemented")
+    override suspend fun endGame(){
+        supabase.client.from(tableName).update({
+            set("is_ended", true)
+        }){
+            filter { eq("id", roomId) }
+        }
     }
+
+
 }

@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 
 
 @Composable
-fun EndGameDialog(score: Int, onDismiss: ()->Unit) {
+fun EndGameDialog(name: String = "", score: Int, onDismiss: ()->Unit) {
     AlertDialog(
         onDismissRequest = { onDismiss() },
         confirmButton = {
@@ -16,7 +16,8 @@ fun EndGameDialog(score: Int, onDismiss: ()->Unit) {
             }
         },
         text = {
-            Text(text = "You win!\n Score: $score")
+            val nameWinner = if(name=="")"You" else name
+            Text(text = "$nameWinner win!\n Score: $score")
         },
     )
 }

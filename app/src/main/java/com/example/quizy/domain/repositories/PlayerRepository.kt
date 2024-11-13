@@ -9,4 +9,6 @@ interface PlayerRepository {
     suspend fun getPlayers(): Flow<List<Player>>
     suspend fun updateTotalScore( score: Int)
     suspend fun getCurrentPlayer(): Player
+    suspend fun saveStartScore()
+    suspend fun endGame(players: List<Int>): Player
 }

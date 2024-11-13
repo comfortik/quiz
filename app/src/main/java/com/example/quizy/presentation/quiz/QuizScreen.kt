@@ -2,6 +2,7 @@ package com.example.quizy.presentation.quiz
 
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,7 +33,7 @@ import com.example.quizy.presentation.quiz.models.QuizUIState
 
 @Composable
 fun QuizScreen (
-    onToast: ()->Unit
+    onToast: (String, Int)->Unit
 ){
     val viewModel:QuizViewModel  = hiltViewModel()
     val state = viewModel.screenState.collectAsState()
@@ -43,21 +44,29 @@ fun QuizScreen (
         viewModel.handleIntent(intent)
     }
     else CreateUi(state.value){
-            viewModel.updateReady(it)
+            viewModel.handleIntent(QuizIntent.UpdateReady(it))
          }
+    BackHandler {
+        viewModel.handleIntent(QuizIntent.LeaveGame)
+    }
 
 
     LaunchedEffect(key1 = viewModel) {
         viewModel.actions.collect{action->
             when(action){
                 is QuizAction.ShowErrorToast->{
-                    Log.d("quiz", "quizquizuqiuzi")
                     Toast.makeText(context, "Please, enter id", Toast.LENGTH_SHORT).show()
+                }
+                is QuizAction.ShowEndAlert->{
+                    Log.d("view quiz", "name ${action.name}, score ${action.score}")
+                    onToast(action.name, action.score)
                 }
             }
         }        
     }
 }
+
+
 
 @Composable
 fun ShowStartAlert(onClick: (QuizIntent)->Unit){
@@ -100,9 +109,12 @@ fun CreateUi(state: QuizUIState, onClick: (Boolean) -> Unit) {
             }
         }
         Spacer(modifier = Modifier.weight(1f))
-        Button(onClick = { onClick(false) }) {
-            Text(text = "I ready")
+        if(state.isReadyButtonVisible){
+            Button(onClick = { onClick(false) }) {
+                Text(text = "I ready")
+            }
         }
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 

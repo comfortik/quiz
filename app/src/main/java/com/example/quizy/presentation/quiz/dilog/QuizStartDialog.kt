@@ -1,5 +1,6 @@
 package com.example.quizy.presentation.quiz.dilog
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -40,6 +41,7 @@ fun QuizStartDialog (
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = {
                     if(!inputText.isNullOrBlank()){
+                        Log.d(inputText.toString(), inputText)
                         onSelect(QuizIntent.JoinRoom(inputText.toInt()))
                     }
                 }) {

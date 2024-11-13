@@ -69,8 +69,8 @@ class MainActivity : ComponentActivity(), ErrorHandler {
         ErrorHandlerProvider.setErrorHandler(this)
         initSharedPrefs()
         val id = getId()
-        val startRoute =Routes.Games
-//            if(id==-1)Routes.ChoosePlayer else Routes.LeaderboardScreen
+//        val startRoute =Routes.Games TODO не забыть поменять на норм нав
+        val startRoute  =  if(id==-1)Routes.ChoosePlayer else Routes.LeaderboardScreen
         setContent {
             QuizyTheme {
                 navController = rememberNavController()
@@ -200,7 +200,7 @@ private fun CreateNavigation(navController: NavHostController, startRoute: Route
             PairsScreen(
             onBackPressed = {navController.navigateUp() },
             onEndGame = { score->
-                navController.navigate(DialogRoutes.EndGameDialog(score))
+                navController.navigate(DialogRoutes.EndGameDialog(score = score))
             }
         )  }
         composable<Routes.Drawing> {
@@ -214,7 +214,9 @@ private fun CreateNavigation(navController: NavHostController, startRoute: Route
         }
         composable<Routes.Quiz> {
             onNavigate(Routes.Quiz)
-            QuizScreen {navController.navigateUp()}
+            QuizScreen {name, score->
+                navController.navigate(DialogRoutes.EndGameDialog(name = name, score = score))
+            }
         }
 
 
@@ -227,8 +229,9 @@ private fun CreateNavigation(navController: NavHostController, startRoute: Route
         }
 
         dialog<DialogRoutes.EndGameDialog> { navBackStackEntry ->
+            val name = navBackStackEntry.toRoute<DialogRoutes.EndGameDialog>().name
             val score = navBackStackEntry.toRoute<DialogRoutes.EndGameDialog>().score
-            EndGameDialog(score = score) {
+            EndGameDialog(name = name, score = score) {
                 navController.navigateUp()
                 navController.navigateUp()
             }
