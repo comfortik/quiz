@@ -95,3 +95,10 @@ fun CreatePlayerItem(player: ChoosePlayerUiState, onPlayerClick: (Int) -> Unit){
     }
 }
 
+@Preview
+@Composable
+fun PreviewScreen(){
+    ChoosePlayerScreen {
+
+    }
+}

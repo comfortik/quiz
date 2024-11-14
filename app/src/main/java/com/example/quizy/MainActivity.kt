@@ -1,20 +1,48 @@
 package com.example.quizy
 
+
+import androidx.compose.foundation.Canvas
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -23,11 +51,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.Path
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,6 +79,7 @@ import androidx.navigation.toRoute
 import com.example.quizy.data.common.SharedPreferensesProvider
 import com.example.quizy.presentation.choosePlayer.ChoosePlayerScreen
 import com.example.quizy.presentation.clicker.ClickerScreen
+import com.example.quizy.presentation.common.BarShape
 import com.example.quizy.presentation.common.ErrorHandler
 import com.example.quizy.presentation.common.ErrorHandlerProvider
 import com.example.quizy.presentation.common.ErrorType
@@ -123,12 +165,7 @@ private fun getScreenTitle(route: Routes) =
         is Routes.Profile->"Profile"
     }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewMain(){
-//    val navController = rememberNavController()
-//    CreateTopBar(navController)
-}
+
 
 
 
@@ -241,47 +278,131 @@ private fun CreateNavigation(navController: NavHostController, startRoute: Route
 
 }
 
-
+@Preview
 @Composable
-fun CreateBottomBar(navController: NavController){
+fun CreatePreview() {
 
+    val navController = rememberNavController()
 
-    BottomAppBar(
-        actions = {
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                bottomBarItems.forEach { item ->
-                    if(item is BottomBarItem.RandomGame){
-                        val game = listOf(
-                            Routes.Quiz,
-                            Routes.Clicker,
-                            Routes.Pairs,
-                            Routes.Drawing
-                        ).random()
-                        IconButton(onClick = { navController.navigate(game) }) {
-                            Icon(
-                                imageVector = ImageVector.vectorResource(id = item.icon),
-                                contentDescription = null
-                            )
-                        }
-                    }else{
-                        IconButton(onClick = { navController.navigate(item.destination) }) {
-                            Icon(
-                                imageVector = ImageVector.vectorResource(id = item.icon),
-                                contentDescription = null
-                            )
-                        }
-                    }
-
-
-                }
-            }
+    Scaffold(
+        bottomBar = {
+            CreateBottomBar(navController = navController)
         }
-    )
+    ) { innerPadding ->
+
+    }
 }
 
 
+@Composable
+fun CreateBottomBar(navController: NavController) {
+    val randomGame = listOf(
+        Routes.Quiz,
+        Routes.Clicker,
+        Routes.Pairs,
+        Routes.Drawing
+    ).random()
+    val withPx = LocalContext.current.resources.displayMetrics.widthPixels
+    val barShape = BarShape(
+        offset = withPx / 2f,
+        circleRadius = 30.dp,
+        cornerRadius = 12.dp,
+        circleGap = 5.dp
+    )
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    Box(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+
+        OutlinedCard(
+            shape = barShape,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White, shape = barShape)
+                .shadow(30.dp, shape = barShape),
+            border = BorderStroke(1.dp, Color.White)
+        ) {
+
+            NavigationBar(
+                modifier = Modifier
+                    .background(Color.White, shape = barShape)
+                    .fillMaxWidth()
+                    .height(80.dp),
+                containerColor = Color.White,
+                contentColor = Color.Black
+            ) {
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(end = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    bottomBarItems.take(2).forEach { item ->
+                        val isSelected = currentDestination?.hierarchy?.any {
+                            it.hasRoute(item.destination::class)
+                        } == true
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(id = item.icon),
+                                    contentDescription = null
+                                )
+                            },
+                            selected = isSelected,
+                            onClick = {
+                                navController.navigate(item.destination)
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = colorResource(id = R.color.black),
+                                unselectedIconColor = colorResource(id = R.color.light_gray),
+                                indicatorColor = Color.Transparent
+                            )
+                        )
+                    }
+                }
 
 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(start = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    bottomBarItems.drop(2).take(2).forEach { item ->
+                        IconButton(onClick = { navController.navigate(item.destination) }) {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(id = item.icon),
+                                contentDescription = null,
+                                tint = colorResource(id = R.color.light_gray)
+                            )
+                        }
+                    }
+                }
+            }
+
+        }
+        FloatingActionButton(
+            onClick = { navController.navigate(randomGame) },
+            shape = CircleShape,
+            containerColor = colorResource(id = R.color.primary_purple),
+            modifier = Modifier
+                .size(55.dp)
+                .align(Alignment.BottomCenter)
+                .offset(y = (-45).dp)
+
+        ) {
+            Icon(
+                imageVector = ImageVector.vectorResource(id = R.drawable.icon_play),
+                tint = Color.White,
+                contentDescription = "Random Game"
+            )
+        }
+    }
+
+
+}
